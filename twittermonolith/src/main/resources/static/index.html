@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TWTR</title>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+</head>
+<body>
+
+<div id="loading-screen"><p>Cargando...</p></div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" style="display:none;">
+    <h1>TWTR</h1>
+    <p>Inicia sesión para publicar en el stream</p>
+    <button onclick="doLogin()">Iniciar sesión con Auth0</button>
+    <hr/>
+    <h2>Stream Global (público)</h2>
+    <div id="public-stream">Cargando posts...</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" style="display:none;">
+    <nav>
+        <strong>TWTR</strong> |
+        <button onclick="showPage('stream')">Stream Global</button>
+        <button onclick="showPage('compose')">Nuevo Post</button>
+        <button onclick="showPage('search')">Buscar</button>
+        <button onclick="showPage('profile')">Mi Perfil</button>
+        <button onclick="doLogout()">Cerrar sesión</button>
+    </nav>
+    <hr/>
+
+    <div id="page-stream" style="display:none;">
+        <h2>Stream Global</h2>
+        <div id="stream-list">Cargando...</div>
+    </div>
+
+    <div id="page-compose" style="display:none;">
+        <h2>Nuevo Post</h2>
+        <textarea id="post-content" maxlength="140" placeholder="¿Qué estás pensando?"
+                  oninput="updateCharCount()"></textarea><br/>
+        <span id="char-count">140 caracteres restantes</span><br/>
+        <button onclick="doCreatePost()">Publicar</button>
+        <p id="post-msg" style="display:none;"></p>
+    </div>
+
+    <div id="page-search" style="display:none;">
+        <h2>Buscar posts por usuario</h2>
+        <input type="text" id="search-input" placeholder="Nombre del usuario..."/>
+        <button onclick="doSearch()">Buscar</button>
+        <div id="search-results"></div>
+    </div>
+
+    <div id="page-profile" style="display:none;">
+        <h2>Mi Perfil</h2>
+        <div id="profile-info">Cargando...</div>
+    </div>
+</div>
+
+<script>
+    // ══════════════════════════════════════
+    // CONFIG
+    // ══════════════════════════════════════
+    const AUTH0_DOMAIN   = 'dev-gkz812m34rwi0rbp.us.auth0.com';
+    const AUTH0_CLIENT   = 'bbkRjtqpFTggJNKh0BbSRkewKbYiWOz6';
+    const AUTH0_AUDIENCE = 'https://twtr-api';
+    const API            = 'http://localhost:8080/api';
+
+    let auth0Client  = null;
+    let backendUser  = null; // { id, name, email } — viene de /api/me
+
+    // ══════════════════════════════════════
+    // INIT
+    // ══════════════════════════════════════
+    window.onload = async () => {
+      auth0Client = await auth0.createAuth0Client({
+        domain:   AUTH0_DOMAIN,
+        clientId: AUTH0_CLIENT,
+        authorizationParams: {
+          audience: AUTH0_AUDIENCE,
+          scope:    'openid profile email'
+        }
+      });
+
+      // Manejar redirect de vuelta desde Auth0
+      if (location.search.includes('code=') || location.search.includes('error=')) {
+        await auth0Client.handleRedirectCallback();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      const isAuthenticated = await auth0Client.isAuthenticated();
+      if (isAuthenticated) {
+        await provisionAndShowApp(); // ← auto-registro al iniciar sesión
+      } else {
+        await loadPublicStream();
+        show('auth-screen');
+        hide('loading-screen');
+      }
+    };
+
+    // ══════════════════════════════════════
+    // AUTO-PROVISIONING
+    // Llama a GET /api/me con el token de Auth0.
+    // El backend crea el usuario si no existe
+    // y devuelve su id para usarlo al crear posts.
+    // ══════════════════════════════════════
+    async function provisionAndShowApp() {
+      try {
+        const res  = await authFetch(`${API}/me`);
+        backendUser = await res.json(); // { id, name, email, sub, scopes }
+
+        hide('loading-screen');
+        hide('auth-screen');
+        show('main-app');
+        showPage('stream');
+      } catch (e) {
+        // Si falla la conexión al backend mostramos el error
+        document.getElementById('loading-screen').innerHTML =
+          `<p style="color:red">Error al conectar con el servidor: ${e.message}</p>
+           <button onclick="doLogout()">Cerrar sesión</button>`;
+      }
+    }
+
+    // ══════════════════════════════════════
+    // AUTH
+    // ══════════════════════════════════════
+    async function doLogin() {
+      await auth0Client.loginWithRedirect({
+        authorizationParams: {
+          redirect_uri: window.location.origin + window.location.pathname
+        }
+      });
+    }
+
+    async function doLogout() {
+      backendUser = null;
+      await auth0Client.logout({
+        logoutParams: { returnTo: window.location.origin + window.location.pathname }
+      });
+    }
+
+    async function getToken() {
+      return await auth0Client.getTokenSilently();
+    }
+
+    async function authFetch(url, options = {}) {
+      const token = await getToken();
+      return fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...(options.headers || {})
+        }
+      });
+    }
+
+    // ══════════════════════════════════════
+    // NAVEGACIÓN
+    // ══════════════════════════════════════
+    function showPage(page) {
+      ['stream','compose','search','profile'].forEach(p => hide(`page-${p}`));
+      show(`page-${page}`);
+      if (page === 'stream')  loadStream();
+      if (page === 'profile') showProfile();
+    }
+
+    // ══════════════════════════════════════
+    // STREAM PÚBLICO
+    // ══════════════════════════════════════
+    async function loadPublicStream() {
+      const el = document.getElementById('public-stream');
+      try {
+        const res   = await fetch(`${API}/posts/stream`);
+        const posts = await res.json();
+        el.innerHTML = renderPostsHTML(posts);
+      } catch (e) {
+        el.innerHTML = 'Error al cargar el stream';
+      }
+    }
+
+    // ══════════════════════════════════════
+    // STREAM AUTENTICADO
+    // ══════════════════════════════════════
+    async function loadStream() {
+      const el = document.getElementById('stream-list');
+      el.innerHTML = 'Cargando...';
+      try {
+        const res   = await fetch(`${API}/posts/stream`);
+        const posts = await res.json();
+        el.innerHTML = renderPostsHTML(posts);
+      } catch (e) {
+        el.innerHTML = 'Error al cargar el stream';
+      }
+    }
+
+    // ══════════════════════════════════════
+    // CREAR POST — usa el id de backendUser
+    // ══════════════════════════════════════
+    async function doCreatePost() {
+      const content = document.getElementById('post-content').value.trim();
+      const msgEl   = document.getElementById('post-msg');
+      msgEl.style.display = 'none';
+
+      if (!content) {
+        showMsg('post-msg', 'Escribe algo primero', 'red');
+        return;
+      }
+
+      if (!backendUser?.id) {
+        showMsg('post-msg', 'Error: usuario no identificado, intenta recargar la página', 'red');
+        return;
+      }
+
+      try {
+        const res  = await authFetch(`${API}/posts`, {
+          method: 'POST',
+          body: JSON.stringify({ content, userId: backendUser.id })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMsg('post-msg', data.error || 'Error al publicar', 'red');
+          return;
+        }
+
+        document.getElementById('post-content').value = '';
+        updateCharCount();
+        showMsg('post-msg', '¡Post publicado!', 'green');
+        setTimeout(() => showPage('stream'), 1000);
+      } catch (e) {
+        showMsg('post-msg', 'Error: ' + e.message, 'red');
+      }
+    }
+
+    function updateCharCount() {
+      const len = document.getElementById('post-content').value.length;
+      document.getElementById('char-count').textContent = `${140 - len} caracteres restantes`;
+    }
+
+    // ══════════════════════════════════════
+    // BUSCAR
+    // ══════════════════════════════════════
+    async function doSearch() {
+      const name    = document.getElementById('search-input').value.trim();
+      const results = document.getElementById('search-results');
+      if (!name) return;
+      results.innerHTML = 'Buscando...';
+      try {
+        const res = await fetch(`${API}/posts/user?name=${encodeURIComponent(name)}`);
+        if (res.status === 404) {
+          results.innerHTML = `No se encontraron posts para "<strong>${name}</strong>"`;
+          return;
+        }
+        const posts = await res.json();
+        results.innerHTML = renderPostsHTML(posts);
+      } catch (e) {
+        results.innerHTML = 'Error al buscar';
+      }
+    }
+
+    // ══════════════════════════════════════
+    // PERFIL — muestra datos de backendUser
+    // ══════════════════════════════════════
+    function showProfile() {
+      const el = document.getElementById('profile-info');
+      if (!backendUser) { el.innerHTML = 'No disponible'; return; }
+      el.innerHTML = `
+        <p><strong>ID:</strong> ${backendUser.id}</p>
+        <p><strong>Nombre:</strong> ${escHtml(backendUser.name)}</p>
+        <p><strong>Email:</strong> ${escHtml(backendUser.email)}</p>
+        <p><strong>Sub Auth0:</strong> ${escHtml(backendUser.sub)}</p>
+      `;
+    }
+
+    // ══════════════════════════════════════
+    // UTILS
+    // ══════════════════════════════════════
+    function renderPostsHTML(posts) {
+      if (!posts.length) return '<p>No hay posts todavía</p>';
+      return posts.map(post => {
+        const name = post.user?.name || 'Anónimo';
+        const date = post.createdAt ? new Date(post.createdAt).toLocaleString('es-CO') : '';
+        return `
+          <div>
+            <strong>${escHtml(name)}</strong> · <small>${date}</small>
+            <p>${escHtml(post.content)}</p>
+            <hr/>
+          </div>`;
+      }).join('');
+    }
+
+    function showMsg(id, msg, color) {
+      const el = document.getElementById(id);
+      el.textContent   = msg;
+      el.style.color   = color;
+      el.style.display = 'block';
+    }
+
+    function show(id) { document.getElementById(id).style.display = 'block'; }
+    function hide(id) { document.getElementById(id).style.display = 'none';  }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>

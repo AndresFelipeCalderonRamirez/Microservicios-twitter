@@ -1,7 +1,7 @@
-package tdse.lab.twitter.user;
+package tdse.lab.twitter.user; // cambia según el servicio
 
 import com.amazonaws.serverless.exceptions.ContainerInitializationException;
-import com.amazonaws.serverless.proxy.model.AwsProxyRequest;
+import com.amazonaws.serverless.proxy.model.HttpApiV2ProxyRequest;
 import com.amazonaws.serverless.proxy.model.AwsProxyResponse;
 import com.amazonaws.serverless.proxy.spring.SpringBootLambdaContainerHandler;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -12,11 +12,11 @@ import java.io.OutputStream;
 
 public class LambdaHandler implements RequestStreamHandler {
 
-    private static final SpringBootLambdaContainerHandler<AwsProxyRequest, AwsProxyResponse> handler;
+    private static final SpringBootLambdaContainerHandler<HttpApiV2ProxyRequest, AwsProxyResponse> handler;
 
     static {
         try {
-            handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(UserServiceApplication.class);
+            handler = SpringBootLambdaContainerHandler.getHttpApiV2ProxyHandler(UserServiceApplication.class);
         } catch (ContainerInitializationException e) {
             throw new RuntimeException("Error al inicializar Spring Boot en Lambda", e);
         }

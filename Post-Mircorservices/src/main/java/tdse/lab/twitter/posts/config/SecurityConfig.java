@@ -10,10 +10,6 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -27,25 +23,21 @@ public class SecurityConfig {
 
     private static final String ISSUER = "https://dev-gkz812m34rwi0rbp.us.auth0.com/";
 
-    // Rutas GET son públicas
     @Bean
     @Order(1)
     public SecurityFilterChain publicFilter(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/api/posts", "/api/posts/stream",
                         "/api/posts/user", "/api/posts/search", "/api/posts/{id}")
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         return http.build();
     }
 
-    // POST /api/posts requiere JWT
     @Bean
     @Order(2)
     public SecurityFilterChain protectedFilter(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -64,17 +56,5 @@ public class SecurityConfig {
         );
         decoder.setJwtValidator(combined);
         return decoder;
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
     }
 }

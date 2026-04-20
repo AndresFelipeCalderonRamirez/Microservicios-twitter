@@ -341,7 +341,7 @@ Use this section to complete your final submission package:
 - [x] Test execution report
 - [ ] Live frontend URL on S3: `https://twitter-monolito.s3.us-east-1.amazonaws.com/Micorservices.html`
 - [x] Swagger OpenAPI export: `[openapi.json](./openapi.json)`
-- [ ] Video demo (5-8 min): `ADD_LINK_HERE`
+- [ ] Video demo (5-8 min): `https://youtu.be/f-1KGv2ITrI`
 
 ---
 

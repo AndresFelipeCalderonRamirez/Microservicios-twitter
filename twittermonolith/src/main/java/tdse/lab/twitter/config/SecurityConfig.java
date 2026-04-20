@@ -3,7 +3,6 @@ package tdse.lab.twitter.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -31,24 +30,9 @@ public class SecurityConfig {
     // Issuer fijo — debe coincidir exactamente con el claim "iss" del JWT de Auth0
     private static final String ISSUER = "https://dev-gkz812m34rwi0rbp.us.auth0.com/";
 
-    // ── CHAIN 1: rutas públicas (posts y streams) ────────────────────────
+    // ── CHAIN ÚNICO: públicos y protegidos por método/ruta ────────────────
     @Bean
-    @Order(1)
-    public SecurityFilterChain publicFilter(HttpSecurity http) throws Exception {
-        http
-                .securityMatcher("/api/posts/**", "/api/streams/**")
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                );
-        return http.build();
-    }
-
-    // ── CHAIN 2: rutas protegidas (requieren JWT) ────────────────────────
-    @Bean
-    @Order(2)
-    public SecurityFilterChain protectedFilter(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -58,6 +42,8 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/favicon.ico").permitAll()
+                        // Lectura pública de posts/streams
+                        .requestMatchers(HttpMethod.GET, "/api/posts/**", "/api/streams/**").permitAll()
                         // Todo lo demás requiere JWT
                         .anyRequest().authenticated()
                 )

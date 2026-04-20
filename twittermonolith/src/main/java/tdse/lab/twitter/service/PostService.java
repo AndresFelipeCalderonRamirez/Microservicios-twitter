@@ -44,7 +44,7 @@ public class PostService {
 
     public List<Post> getGlobalStreamPosts() {
         Stream globalStream = streamRepository.findByName("global")
-                .orElseGet(() -> streamRepository.save(new Stream("global")));
+                .orElseThrow(() -> new RuntimeException("Global stream not found"));
 
         return postRepository.findByStreamIdOrderByCreatedAtDesc(globalStream.getId());
     }

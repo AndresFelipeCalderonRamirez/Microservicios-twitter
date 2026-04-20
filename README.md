@@ -4,23 +4,6 @@
 
 This repository contains an experimental assignment implementation of a simplified Twitter-like platform.
 
-## 0) Diagram Placement Guide (Mermaid)
-
-If you need to re-paste the diagrams manually, use this exact mapping:
-
-1. Paste **Evolution diagram (Monolith -> Microservices)** under section **3) Repository Structure and Architecture Evolution**.
-2. Paste **Monolith module architecture** under section **4) Monolith Deep Analysis**.
-3. Paste **Auth flow in monolith** under section **4) Monolith Deep Analysis**, right below "Monolith security strategy".
-4. Paste **Microservices topology diagram** under section **6) Microservices Deep Analysis**.
-5. Paste **Create-post flow in microservices** under section **6) Microservices Deep Analysis**.
-6. Paste **Stream-read flow in microservices** under section **6) Microservices Deep Analysis**.
-
-Recommended order in the file:
-
-- Section 3: architecture evolution (high level)
-- Section 4: monolith internal structure + monolith auth/data flow
-- Section 6: microservices topology + create/read flows
-
 The project was developed in two stages:
 
 1. A secure Spring Boot monolith with Auth0 JWT validation, Swagger/OpenAPI docs, and a JavaScript SPA frontend.
@@ -32,7 +15,7 @@ Core behavior implemented:
 - All posts belong to a single global public feed.
 - Public users can read the feed.
 - Authenticated users can retrieve profile data via a "me" endpoint.
-
+- In deliverables Checklist has the link to the frontend on S3, the json for the swagger documentation, and the link of the video. 
 ---
 
 ## 2) Assignment Goals vs Current Implementation
@@ -73,7 +56,7 @@ Microservicios-twitter/
 
 ### Evolution diagram (Monolith -> Microservices)
 
-![alt text](<images/Monolith - Microservices.png>)
+![alt text](images/evolution.png)
 
 ---
 
@@ -96,7 +79,7 @@ Microservicios-twitter/
 
 ## Monolith module architecture
 
-![alt text](<images/Monolith module architecture.png>)
+![alt text](images/Monolith%20module%20architecture.png)
 
 ### Key implemented endpoints (monolith)
 
@@ -126,7 +109,7 @@ Protected/profile-related endpoints:
 
 Auth flow in monolith:
 
-![alt text](<images/Auth flow in monolith.png>)
+![alt text](images/Auth%20flow%20in%20monolith.png)
 
 ---
 
@@ -216,16 +199,16 @@ Serverless adapter:
 
 ### Microservices topology diagram
 
-![alt text](<images/Microservices topology diagram.png>)
+![alt text](images/microservices.png)
 
 
 ### Create-post flow in microservices
 
-![alt text](<images/Create-post flow in microservices.png>)
+![alt text](images/Create-post%20flow%20in%20microservices.png)
 
 ### Stream-read flow in microservices
 
-![alt text](<images/Stream-read flow in microservices.png>)
+![alt text](images/Stream-read%20flow%20in%20microservices.png)
 
 ---
 
@@ -356,8 +339,8 @@ Use this section to complete your final submission package:
 - [x] Architecture and flow diagrams in README
 - [x] Setup and local run instructions
 - [x] Test execution report
-- [ ] Live frontend URL on S3: `ADD_LINK_HERE`
-- [x] Swagger URL or OpenAPI screenshot/export: `ADD_LINK_HERE`
+- [ ] Live frontend URL on S3: `https://twitter-monolito.s3.us-east-1.amazonaws.com/Micorservices.html`
+- [x] Swagger OpenAPI export: `[openapi.json](./openapi.json)`
 - [ ] Video demo (5-8 min): `ADD_LINK_HERE`
 
 ---

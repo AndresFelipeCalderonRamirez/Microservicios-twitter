@@ -1,5 +1,10 @@
 # Secure Twitter-like App: Monolith to Serverless Microservices (Auth0 + AWS)
 
+# Members:
+- Andrés Felipe Calderón Ramírez
+- Daniel Alejandro Rodriguez
+- Sebastian Velandia
+
 ## 1) Project Summary
 
 This repository contains an experimental assignment implementation of a simplified Twitter-like platform.

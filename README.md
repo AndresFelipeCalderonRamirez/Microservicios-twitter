@@ -73,27 +73,7 @@ Microservicios-twitter/
 
 ### Evolution diagram (Monolith -> Microservices)
 
-<!-- DIAGRAM 1 START: Evolution diagram (Monolith -> Microservices) -->
-```mermaid
-flowchart LR
-		A[Browser SPA on S3] --> B[Monolith API - Spring Boot]
-		B --> C[(Supabase MySQL)]
-		A --> D[Auth0]
-		D --> A
-
-			subgraph Migration Stage
-			A2[Browser SPA on S3] --> G[API Gateway]
-			G --> U[User Service - Lambda]
-			G --> P[Posts Service - Lambda]
-			G --> S[Stream Service - Lambda]
-			S --> P
-				U --> DU[(In-memory Store)]
-				P --> DP[(In-memory Store)]
-			A2 --> D2[Auth0]
-			D2 --> A2
-		end
-```
-<!-- DIAGRAM 1 END -->
+![alt text](<images/Monolith - Microservices.png>)
 
 ---
 
@@ -116,21 +96,7 @@ flowchart LR
 
 ## Monolith module architecture
 
-<!-- DIAGRAM 2 START: Monolith module architecture -->
-```mermaid
-flowchart TB
-		C1[Controllers]
-		C2[Services]
-		C3[Repositories]
-		C4[Entities]
-		C5[Security + Swagger]
-
-		C1 --> C2
-		C2 --> C3
-		C3 --> C4
-		C1 --> C5
-```
-<!-- DIAGRAM 2 END -->
+![alt text](<images/Monolith module architecture.png>)
 
 ### Key implemented endpoints (monolith)
 
@@ -160,34 +126,7 @@ Protected/profile-related endpoints:
 
 Auth flow in monolith:
 
-<!-- DIAGRAM 3 START: Auth flow in monolith -->
-```mermaid
-sequenceDiagram
-		participant U as User
-		participant FE as SPA Frontend
-		participant A as Auth0
-		participant M as Monolith API
-		participant DB as Supabase MySQL
-
-		U->>FE: Click login
-		FE->>A: Redirect for authentication
-		A-->>FE: Access token (JWT)
-		FE->>M: GET /api/me (Bearer token)
-		M->>M: Validate issuer + audience + signature
-		M->>DB: Find/create local user
-		DB-->>M: User profile
-		M-->>FE: id, name, email, sub
-
-		U->>FE: Publish post
-		FE->>M: POST /api/posts
-		M->>DB: Save post in global stream
-		M-->>FE: Created post
-
-		FE->>M: GET /api/posts/stream
-		M->>DB: Query feed
-		M-->>FE: Public stream
-```
-<!-- DIAGRAM 3 END -->
+![alt text](<images/Auth flow in monolith.png>)
 
 ---
 
@@ -277,72 +216,16 @@ Serverless adapter:
 
 ### Microservices topology diagram
 
-<!-- DIAGRAM 4 START: Microservices topology diagram -->
-```mermaid
-flowchart LR
-		FE[SPA Frontend on S3] --> AGW[Amazon API Gateway]
-		FE --> AUTH[Auth0]
-		AUTH --> FE
+![alt text](<images/Microservices topology diagram.png>)
 
-		AGW --> US[User Service Lambda]
-		AGW --> PS[Posts Service Lambda]
-		AGW --> SS[Stream Service Lambda]
-
-		SS -->|HTTP call| PS
-
-		US --> UDB[(In-memory users)]
-		PS --> PDB[(In-memory posts)]
-```
-<!-- DIAGRAM 4 END -->
 
 ### Create-post flow in microservices
 
-<!-- DIAGRAM 5 START: Create-post flow in microservices -->
-```mermaid
-sequenceDiagram
-		participant U as User
-		participant FE as SPA
-		participant A as Auth0
-		participant G as API Gateway
-		participant US as User Service
-		participant PS as Posts Service
-		participant DB as Posts DB
-
-		U->>FE: Login
-		FE->>A: Authenticate
-		A-->>FE: JWT token
-
-		FE->>G: GET /api/users/me (Bearer)
-		G->>US: Forward request
-		US->>US: Validate token (issuer + audience)
-		US-->>FE: userId, name, email
-
-		FE->>G: POST /api/posts (content, userId, userName, Bearer)
-		G->>PS: Forward request
-		PS->>PS: Validate token
-		PS->>DB: Insert post
-		DB-->>PS: Created row
-		PS-->>FE: 201 Created
-```
-<!-- DIAGRAM 5 END -->
+![alt text](<images/Create-post flow in microservices.png>)
 
 ### Stream-read flow in microservices
 
-<!-- DIAGRAM 6 START: Stream-read flow in microservices -->
-```mermaid
-sequenceDiagram
-		participant FE as SPA
-		participant G as API Gateway
-		participant SS as Stream Service
-		participant PS as Posts Service
-
-		FE->>G: GET /api/streams/global
-		G->>SS: Forward
-		SS->>PS: GET /api/posts/stream
-		PS-->>SS: posts[]
-		SS-->>FE: posts[]
-```
-<!-- DIAGRAM 6 END -->
+![alt text](<images/Stream-read flow in microservices.png>)
 
 ---
 
@@ -393,16 +276,24 @@ What this means:
 
 ## 9.1 Run monolith locally
 
+To view Swagger:
+
 ```bash
 cd twittermonolith
 mvn spring-boot:run
 ```
+
+Then open:
+
+`http://localhost:8080/swagger-ui/index.html`
 
 Default URL:
 
 - API: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - Frontend (served by Spring): `http://localhost:8080/`
+
+![alt text](images/Swagger.png)
 
 ## 9.2 Run microservices locally (development mode)
 
@@ -466,7 +357,7 @@ Use this section to complete your final submission package:
 - [x] Setup and local run instructions
 - [x] Test execution report
 - [ ] Live frontend URL on S3: `ADD_LINK_HERE`
-- [ ] Swagger URL or OpenAPI screenshot/export: `ADD_LINK_HERE`
+- [x] Swagger URL or OpenAPI screenshot/export: `ADD_LINK_HERE`
 - [ ] Video demo (5-8 min): `ADD_LINK_HERE`
 
 ---

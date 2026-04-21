@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TWTR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+    <style>
+        :root {
+            --cream: #F0EDF8;
+            --ink: #12082A;
+            --wine: #6B3FA0;
+            --gold: #A78BFA;
+            --rust: #8B5CF6;
+            --muted: #8B7AA8;
+            --border: #C4B5E8;
+            --card: #F7F4FD;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--cream);
+            color: var(--ink);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── LOADING ── */
+        #loading-screen {
+            position: fixed; inset: 0;
+            background: var(--ink);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 100;
+            gap: 24px;
+        }
+
+        #loading-screen .logo-big {
+            font-family: 'Playfair Display', serif;
+            font-size: 72px;
+            color: var(--cream);
+            letter-spacing: -2px;
+        }
+
+        #loading-screen p {
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #loading-screen button {
+            margin-top: 8px;
+            padding: 10px 24px;
+            background: var(--wine);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .dot-loader {
+            display: flex; gap: 8px;
+        }
+
+        .dot-loader span {
+            width: 8px; height: 8px;
+            background: var(--wine);
+            border-radius: 50%;
+            animation: bounce 1.2s infinite;
+        }
+
+        .dot-loader span:nth-child(2) { animation-delay: 0.2s; }
+        .dot-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── AUTH SCREEN ── */
+        #auth-screen {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .auth-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        .auth-hero {
+            background: var(--ink);
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .auth-hero .wordmark {
+            font-family: 'Playfair Display', serif;
+            font-size: 96px;
+            color: var(--cream);
+            line-height: 1;
+            letter-spacing: -4px;
+        }
+
+        .auth-hero .tagline {
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            line-height: 1.8;
+            max-width: 280px;
+        }
+
+        .auth-hero .tagline em {
+            color: var(--gold);
+            font-style: normal;
+        }
+
+        .auth-panel {
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .auth-panel h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .btn-login {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 32px;
+            background: var(--wine);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            transition: background 0.2s;
+            width: fit-content;
+        }
+
+        .btn-login:hover { background: var(--rust); }
+
+        .public-stream-section h3 {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ── MAIN APP ── */
+        #main-app { display: none; }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--ink);
+            padding: 40px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar .wordmark {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            color: var(--cream);
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            text-align: left;
+            border-radius: 4px;
+            transition: all 0.15s;
+            width: 100%;
+        }
+
+        .nav-link:hover {
+            color: var(--cream);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .nav-link.active {
+            color: var(--cream);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-link .icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-logout {
+            padding: 12px 16px;
+            color: var(--rust);
+            background: none;
+            border: 1px solid rgba(181,73,42,0.3);
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.15s;
+        }
+
+        .nav-logout:hover {
+            background: rgba(181,73,42,0.15);
+        }
+
+        /* Main content */
+        .main-content {
+            padding: 48px;
+            max-width: 720px;
+        }
+
+        .page { display: none; }
+
+        .page-header {
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-header h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-weight: 700;
+        }
+
+        .page-header .subtitle {
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 6px;
+        }
+
+        /* Posts */
+        .post-card {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .post-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .post-author {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .post-dot {
+            color: var(--border);
+        }
+
+        .post-date {
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+
+        .post-content {
+            font-size: 15px;
+            line-height: 1.65;
+            color: #2A2218;
+        }
+
+        .no-posts {
+            color: var(--muted);
+            font-style: italic;
+            padding: 32px 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+        }
+
+        /* Compose */
+        .compose-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 24px;
+        }
+
+        .compose-box textarea {
+            width: 100%;
+            height: 120px;
+            border: none;
+            background: transparent;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            color: var(--ink);
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+        }
+
+        .compose-box textarea::placeholder {
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        .compose-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .char-count {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .char-count.warning { color: var(--rust); }
+
+        .btn-post {
+            padding: 10px 28px;
+            background: var(--wine);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .btn-post:hover { background: var(--rust); }
+
+        .post-feedback {
+            display: none;
+            margin-top: 12px;
+            padding: 10px 16px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+        }
+
+        .post-feedback.success {
+            background: rgba(123,45,62,0.08);
+            color: var(--wine);
+            border-left: 3px solid var(--wine);
+        }
+
+        .post-feedback.error {
+            background: rgba(181,73,42,0.08);
+            color: var(--rust);
+            border-left: 3px solid var(--rust);
+        }
+
+        /* Search */
+        .search-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            color: var(--ink);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .search-input:focus { border-color: var(--wine); }
+
+        .btn-search {
+            padding: 12px 24px;
+            background: var(--ink);
+            color: var(--cream);
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 1px;
+            transition: background 0.15s;
+        }
+
+        .btn-search:hover { background: var(--wine); }
+
+        /* Profile */
+        .profile-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 32px;
+        }
+
+        .profile-initial {
+            width: 64px;
+            height: 64px;
+            background: var(--wine);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .profile-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .profile-email {
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            margin-bottom: 24px;
+        }
+
+        .profile-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .meta-item label {
+            display: block;
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .meta-item value {
+            font-size: 13px;
+            color: var(--ink);
+            word-break: break-all;
+        }
+
+        @media (max-width: 768px) {
+            .auth-layout { grid-template-columns: 1fr; }
+            .auth-hero { display: none; }
+            .app-container { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .main-content { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+    <div class="logo-big">TWTR</div>
+    <div class="dot-loader">
+        <span></span><span></span><span></span>
+    </div>
+    <p id="loading-msg">Iniciando sesión</p>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+    <div class="auth-layout">
+        <div class="auth-hero">
+            <div class="wordmark">TWTR</div>
+            <div class="tagline">
+                Un espacio para pensar en voz alta.<br/>
+                <em>140 caracteres.</em> Nada más.
+            </div>
+        </div>
+        <div class="auth-panel">
+            <div>
+                <h2>Bienvenido</h2>
+                <p style="color:var(--muted);margin-top:8px;font-size:14px;">Inicia sesión para publicar en el stream global.</p>
+            </div>
+            <button class="btn-login" onclick="doLogin()">
+                <span>→</span> Iniciar sesión
+            </button>
+            <div class="public-stream-section">
+                <h3>Stream Global</h3>
+                <div id="public-stream">
+                    <p style="color:var(--muted);font-style:italic;">Cargando posts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app">
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="wordmark">TWTR</div>
+            <nav class="nav-links">
+                <button class="nav-link active" onclick="showPage('stream')">
+                    <span class="icon">◈</span> Stream
+                </button>
+                <button class="nav-link" onclick="showPage('compose')">
+                    <span class="icon">✦</span> Nuevo Post
+                </button>
+                <button class="nav-link" onclick="showPage('search')">
+                    <span class="icon">◎</span> Buscar
+                </button>
+                <button class="nav-link" onclick="showPage('profile')">
+                    <span class="icon">◉</span> Mi Perfil
+                </button>
+            </nav>
+            <button class="nav-logout" onclick="doLogout()">← Salir</button>
+        </aside>
+
+        <main class="main-content">
+            <!-- Stream -->
+            <div id="page-stream" class="page">
+                <div class="page-header">
+                    <h2>Stream Global</h2>
+                    <p class="subtitle">Lo que el mundo está pensando</p>
+                </div>
+                <div id="stream-list">
+                    <p style="color:var(--muted)">Cargando...</p>
+                </div>
+            </div>
+
+            <!-- Compose -->
+            <div id="page-compose" class="page">
+                <div class="page-header">
+                    <h2>Nuevo Post</h2>
+                    <p class="subtitle">Máximo 140 caracteres</p>
+                </div>
+                <div class="compose-box">
+                    <textarea id="post-content" maxlength="140"
+                        placeholder="¿Qué estás pensando hoy?"
+                        oninput="updateCharCount()"></textarea>
+                    <div class="compose-footer">
+                        <span class="char-count" id="char-count">140 restantes</span>
+                        <button class="btn-post" onclick="doCreatePost()">Publicar →</button>
+                    </div>
+                </div>
+                <div id="post-msg" class="post-feedback"></div>
+            </div>
+
+            <!-- Search -->
+            <div id="page-search" class="page">
+                <div class="page-header">
+                    <h2>Buscar</h2>
+                    <p class="subtitle">Posts por nombre de usuario</p>
+                </div>
+                <div class="search-row">
+                    <input type="text" class="search-input" id="search-input"
+                        placeholder="Nombre del usuario..."
+                        onkeydown="if(event.key==='Enter') doSearch()"/>
+                    <button class="btn-search" onclick="doSearch()">Buscar</button>
+                </div>
+                <div id="search-results"></div>
+            </div>
+
+            <!-- Profile -->
+            <div id="page-profile" class="page">
+                <div class="page-header">
+                    <h2>Mi Perfil</h2>
+                    <p class="subtitle">Tu cuenta en TWTR</p>
+                </div>
+                <div id="profile-info"></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    const AUTH0_DOMAIN   = 'dev-gkz812m34rwi0rbp.us.auth0.com';
+    const AUTH0_CLIENT   = 'bbkRjtqpFTggJNKh0BbSRkewKbYiWOz6';
+    const AUTH0_AUDIENCE = 'https://twtr-api';
+
+    const API_USERS  = 'https://cikjiud6pjsc4bmhgvhcytux3q0sscgl.lambda-url.us-east-1.on.aws/api';
+    const API_POSTS  = 'https://b5dvmdgxaqv3wpfbvz6zt2qr4u0izwtn.lambda-url.us-east-1.on.aws/api';
+
+    let auth0Client = null;
+    let backendUser = null;
+
+    window.onload = async () => {
+        auth0Client = await auth0.createAuth0Client({
+            domain:   AUTH0_DOMAIN,
+            clientId: AUTH0_CLIENT,
+            authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email' }
+        });
+
+        if (location.search.includes('code=') || location.search.includes('error=')) {
+            await auth0Client.handleRedirectCallback();
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const isAuthenticated = await auth0Client.isAuthenticated();
+        if (isAuthenticated) {
+            await provisionAndShowApp();
+        } else {
+            await loadPublicStream();
+            show('auth-screen');
+            hide('loading-screen');
+        }
+    };
+
+    async function provisionAndShowApp() {
+        const msgEl = document.getElementById('loading-msg');
+        let intentos = 0;
+        while (intentos < 5) {
+            try {
+                msgEl.textContent = intentos === 0 ? 'Conectando...' : `Reintentando... (${intentos}/5)`;
+                const res = await authFetch(`${API_USERS}/users/me`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                backendUser = await res.json();
+                if (!backendUser?.id) throw new Error('Respuesta inválida');
+
+                hide('loading-screen');
+                hide('auth-screen');
+                show('main-app');
+                showPage('stream');
+                return;
+            } catch (e) {
+                intentos++;
+                if (intentos < 5) {
+                    await new Promise(r => setTimeout(r, 5000));
+                } else {
+                    document.getElementById('loading-screen').innerHTML = `
+                        <div class="logo-big" style="font-size:48px">TWTR</div>
+                        <p style="color:#B5492A">No se pudo conectar con el servidor</p>
+                        <button onclick="location.reload()">Reintentar</button>
+                        <button onclick="doLogout()" style="background:transparent;color:var(--muted);border:1px solid #444;margin-top:8px">Cerrar sesión</button>
+                    `;
+                }
+            }
+        }
+    }
+
+    async function doLogin() {
+        await auth0Client.loginWithRedirect({
+            authorizationParams: { redirect_uri: window.location.origin + window.location.pathname }
+        });
+    }
+
+    async function doLogout() {
+        backendUser = null;
+        await auth0Client.logout({
+            logoutParams: { returnTo: window.location.origin + window.location.pathname }
+        });
+    }
+
+    async function getToken() { return await auth0Client.getTokenSilently(); }
+
+    async function authFetch(url, options = {}) {
+        const token = await getToken();
+        return fetch(url, {
+            ...options,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(options.headers||{}) }
+        });
+    }
+
+    function showPage(page) {
+        document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.getElementById(`page-${page}`).style.display = 'block';
+        const idx = ['stream','compose','search','profile'].indexOf(page);
+        document.querySelectorAll('.nav-link')[idx]?.classList.add('active');
+        if (page === 'stream')  loadStream();
+        if (page === 'profile') showProfile();
+    }
+
+    async function loadPublicStream() {
+        const el = document.getElementById('public-stream');
+        try {
+            const res = await fetch(`${API_POSTS}/posts/stream`);
+            const posts = await res.json();
+            el.innerHTML = renderPostsHTML(posts);
+        } catch { el.innerHTML = '<p style="color:var(--muted);font-style:italic">Sin conexión al stream</p>'; }
+    }
+
+    async function loadStream() {
+        const el = document.getElementById('stream-list');
+        el.innerHTML = '<p style="color:var(--muted)">Cargando...</p>';
+        try {
+            const res = await fetch(`${API_POSTS}/posts/stream`);
+            const posts = await res.json();
+            el.innerHTML = renderPostsHTML(posts);
+        } catch { el.innerHTML = '<p style="color:var(--muted)">Error al cargar el stream</p>'; }
+    }
+
+    async function doCreatePost() {
+        const content = document.getElementById('post-content').value.trim();
+        const msgEl = document.getElementById('post-msg');
+        msgEl.style.display = 'none';
+
+        if (!content) { showFeedback('Escribe algo primero', 'error'); return; }
+        if (!backendUser?.id) { showFeedback('Error: usuario no identificado', 'error'); return; }
+
+        try {
+            const res = await authFetch(`${API_POSTS}/posts`, {
+                method: 'POST',
+                body: JSON.stringify({ content, userId: backendUser.id, userName: backendUser.name })
+            });
+            const data = await res.json();
+            if (!res.ok) { showFeedback(data.error || 'Error al publicar', 'error'); return; }
+            document.getElementById('post-content').value = '';
+            updateCharCount();
+            showFeedback('¡Post publicado con éxito!', 'success');
+            setTimeout(() => showPage('stream'), 1500);
+        } catch (e) { showFeedback('Error: ' + e.message, 'error'); }
+    }
+
+    function showFeedback(msg, type) {
+        const el = document.getElementById('post-msg');
+        el.textContent = msg;
+        el.className = `post-feedback ${type}`;
+        el.style.display = 'block';
+    }
+
+    function updateCharCount() {
+        const len = document.getElementById('post-content').value.length;
+        const el = document.getElementById('char-count');
+        el.textContent = `${140 - len} restantes`;
+        el.className = 'char-count' + (len > 120 ? ' warning' : '');
+    }
+
+    async function doSearch() {
+        const name = document.getElementById('search-input').value.trim();
+        const results = document.getElementById('search-results');
+        if (!name) return;
+        results.innerHTML = '<p style="color:var(--muted)">Buscando...</p>';
+        try {
+            const res = await fetch(`${API_POSTS}/posts/user?name=${encodeURIComponent(name)}`);
+            if (res.status === 404) {
+                results.innerHTML = `<p class="no-posts">Sin resultados para "${escHtml(name)}"</p>`;
+                return;
+            }
+            const posts = await res.json();
+            results.innerHTML = renderPostsHTML(posts);
+        } catch { results.innerHTML = '<p style="color:var(--muted)">Error al buscar</p>'; }
+    }
+
+    function showProfile() {
+        const el = document.getElementById('profile-info');
+        if (!backendUser) { el.innerHTML = '<p style="color:var(--muted)">No disponible</p>'; return; }
+        const initial = (backendUser.name || 'U')[0].toUpperCase();
+        el.innerHTML = `
+            <div class="profile-card">
+                <div class="profile-initial">${initial}</div>
+                <div class="profile-name">${escHtml(backendUser.name || '')}</div>
+                <div class="profile-email">${escHtml(backendUser.email || '')}</div>
+                <div class="profile-meta">
+                    <div class="meta-item">
+                        <label>ID interno</label>
+                        <value>${backendUser.id}</value>
+                    </div>
+                    <div class="meta-item">
+                        <label>Auth0 Sub</label>
+                        <value>${escHtml((backendUser.sub||'').substring(0,24))}…</value>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    function renderPostsHTML(posts) {
+        if (!posts || !posts.length) return '<p class="no-posts">Nada aquí todavía.</p>';
+        return posts.map(post => {
+            const name = post.userName || post.user?.name || 'Anónimo';
+            const date = post.createdAt ? new Date(post.createdAt).toLocaleString('es-CO', {dateStyle:'medium',timeStyle:'short'}) : '';
+            return `<div class="post-card">
+                <div class="post-meta">
+                    <span class="post-author">${escHtml(name)}</span>
+                    <span class="post-dot">·</span>
+                    <span class="post-date">${date}</span>
+                </div>
+                <p class="post-content">${escHtml(post.content)}</p>
+            </div>`;
+        }).join('');
+    }
+
+    function show(id) { document.getElementById(id).style.display = 'block'; }
+    function hide(id) { document.getElementById(id).style.display = 'none'; }
+    function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>
